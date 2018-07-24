@@ -1,4 +1,4 @@
-package main
+package telnet
 
 import (
 	"bufio"
@@ -199,7 +199,7 @@ func (c *Conn) wont(option byte) error {
 	return err
 }
 
-func (c *Conn) setWindowSize(rows, columns byte) error {
+func (c *Conn) SetWindowSize(rows, columns byte) error {
 	c.rows = rows
 	c.columns = columns
 	return c.will(optWndSize)
