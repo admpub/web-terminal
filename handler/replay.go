@@ -8,11 +8,12 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+// Replay
 func Replay(ws *websocket.Conn) {
 	defer ws.Close()
 	fileName := ws.Request().URL.Query().Get("file")
 	charset := ws.Request().URL.Query().Get("charset")
-	if "" == charset {
+	if 0 == len(charset) {
 		if "windows" == runtime.GOOS {
 			charset = "GB18030"
 		} else {

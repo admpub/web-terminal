@@ -38,11 +38,7 @@ func main() {
 		return
 	}
 	httpFS := http.FileServer(templateBox.HTTPBox())
-
-	http.Handle("/static/", http.StripPrefix("/static/", httpFS))
-	if appRoot != "/" {
-		http.Handle(appRoot+"static/", http.StripPrefix(appRoot+"static/", httpFS))
-	}
+	http.Handle(appRoot+"static/", http.StripPrefix(appRoot+"static/", httpFS))
 	fmt.Println("[web-terminal] listen at '" + config.Default.Listen + "' with root is '" + config.Default.ResourceDir + "'")
 	err = http.ListenAndServe(config.Default.Listen, nil)
 	if err != nil {
