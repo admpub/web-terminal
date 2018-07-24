@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.search = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SearchHelper = (function () {
@@ -60,6 +60,18 @@ var SearchHelper = (function () {
         var lowerTerm = term.toLowerCase();
         var searchIndex = lowerStringLine.indexOf(lowerTerm);
         if (searchIndex >= 0) {
+            var line = this._terminal.buffer.lines.get(y);
+            for (var i = 0; i < searchIndex; i++) {
+                var charData = line[i];
+                var char = charData[1];
+                if (char.length > 1) {
+                    searchIndex -= char.length - 1;
+                }
+                var charWidth = charData[2];
+                if (charWidth === 0) {
+                    searchIndex++;
+                }
+            }
             return {
                 term: term,
                 col: searchIndex,
@@ -72,7 +84,7 @@ var SearchHelper = (function () {
             return false;
         }
         this._terminal.selectionManager.setSelection(result.col, result.row, result.term.length);
-        this._terminal.scrollDisp(result.row - this._terminal.buffer.ydisp, false);
+        this._terminal.scrollLines(result.row - this._terminal.buffer.ydisp);
         return true;
     };
     return SearchHelper;
@@ -85,32 +97,34 @@ exports.SearchHelper = SearchHelper;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SearchHelper_1 = require("./SearchHelper");
-(function (addon) {
-    if (typeof window !== 'undefined' && 'Terminal' in window) {
-        addon(window.Terminal);
+function findNext(terminal, term) {
+    var addonTerminal = terminal;
+    if (!addonTerminal.__searchHelper) {
+        addonTerminal.__searchHelper = new SearchHelper_1.SearchHelper(addonTerminal);
     }
-    else if (typeof exports === 'object' && typeof module === 'object') {
-        module.exports = addon(require('../../Terminal').Terminal);
+    return addonTerminal.__searchHelper.findNext(term);
+}
+exports.findNext = findNext;
+function findPrevious(terminal, term) {
+    var addonTerminal = terminal;
+    if (!addonTerminal.__searchHelper) {
+        addonTerminal.__searchHelper = new SearchHelper_1.SearchHelper(addonTerminal);
     }
-    else if (typeof define === 'function') {
-        define(['../../xterm'], addon);
-    }
-})(function (Terminal) {
-    Terminal.prototype.findNext = function (term) {
-        if (!this._searchHelper) {
-            this.searchHelper = new SearchHelper_1.SearchHelper(this);
-        }
-        return this.searchHelper.findNext(term);
+    return addonTerminal.__searchHelper.findPrevious(term);
+}
+exports.findPrevious = findPrevious;
+function apply(terminalConstructor) {
+    terminalConstructor.prototype.findNext = function (term) {
+        return findNext(this, term);
     };
-    Terminal.prototype.findPrevious = function (term) {
-        if (!this._searchHelper) {
-            this.searchHelper = new SearchHelper_1.SearchHelper(this);
-        }
-        return this.searchHelper.findPrevious(term);
+    terminalConstructor.prototype.findPrevious = function (term) {
+        return findPrevious(this, term);
     };
+}
+exports.apply = apply;
+
+
+
+},{"./SearchHelper":1}]},{},[2])(2)
 });
-
-
-
-},{"../../Terminal":undefined,"./SearchHelper":1}]},{},[2])
 //# sourceMappingURL=search.js.map

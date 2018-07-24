@@ -1,125 +1,94 @@
-/**
- * Copyright (c) 2014 The xterm.js authors. All rights reserved.
- * @license MIT
- *
- * Implements the attach method, that attaches the terminal to a WebSocket stream.
- */
-
-(function (attach) {
-  if (typeof exports === 'object' && typeof module === 'object') {
-    /*
-     * CommonJS environment
-     */
-    module.exports = attach(require('../../Terminal').Terminal);
-  } else if (typeof define == 'function') {
-    /*
-     * Require.js is available
-     */
-    define(['../../xterm'], attach);
-  } else {
-    /*
-     * Plain browser environment
-     */
-    attach(window.Terminal);
-  }
-})(function (Terminal) {
-  'use strict';
-
-  var exports = {};
-
-  /**
-   * Attaches the given terminal to the given socket.
-   *
-   * @param {Terminal} term - The terminal to be attached to the given socket.
-   * @param {WebSocket} socket - The socket to attach the current terminal.
-   * @param {boolean} bidirectional - Whether the terminal should send data
-   *                                  to the socket as well.
-   * @param {boolean} buffered - Whether the rendering of incoming data
-   *                             should happen instantly or at a maximum
-   *                             frequency of 1 rendering per 10ms.
-   */
-  exports.attach = function (term, socket, bidirectional, buffered) {
-    bidirectional = (typeof bidirectional == 'undefined') ? true : bidirectional;
-    term.socket = socket;
-
-    term._flushBuffer = function () {
-      term.write(term._attachSocketBuffer);
-      term._attachSocketBuffer = null;
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.attach = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function attach(term, socket, bidirectional, buffered) {
+    var addonTerminal = term;
+    bidirectional = (typeof bidirectional === 'undefined') ? true : bidirectional;
+    addonTerminal.__socket = socket;
+    addonTerminal.__flushBuffer = function () {
+        addonTerminal.write(addonTerminal.__attachSocketBuffer);
+        addonTerminal.__attachSocketBuffer = null;
     };
-
-    term._pushToBuffer = function (data) {
-      if (term._attachSocketBuffer) {
-        term._attachSocketBuffer += data;
-      } else {
-        term._attachSocketBuffer = data;
-        setTimeout(term._flushBuffer, 10);
-      }
+    addonTerminal.__pushToBuffer = function (data) {
+        if (addonTerminal.__attachSocketBuffer) {
+            addonTerminal.__attachSocketBuffer += data;
+        }
+        else {
+            addonTerminal.__attachSocketBuffer = data;
+            setTimeout(addonTerminal.__flushBuffer, 10);
+        }
     };
-
-    term._getMessage = function (ev) {
-      if (buffered) {
-        term._pushToBuffer(ev.data);
-      } else {
-        term.write(ev.data);
-      }
+    var myTextDecoder;
+    addonTerminal.__getMessage = function (ev) {
+        var str;
+        if (typeof ev.data == 'object') {
+            if (!myTextDecoder) {
+                myTextDecoder = new TextDecoder();
+            }
+            if (ev.data instanceof ArrayBuffer) {
+                str = myTextDecoder.decode(ev.data);
+                displayData(str);
+            }
+            else {
+                var fileReader = new FileReader();
+                fileReader.addEventListener('load', function () {
+                    str = myTextDecoder.decode(this.result);
+                    displayData(str);
+                });
+                fileReader.readAsArrayBuffer(ev.data);
+            }
+        }
+        else if (typeof ev.data == 'string') {
+            displayData(ev.data);
+        }
+        else {
+            throw Error("Cannot handle \"" + typeof ev.data + "\" websocket message.");
+        }
     };
-
-    term._sendData = function (data) {
-      socket.send(data);
+    function displayData(str, data) {
+        if (buffered) {
+            addonTerminal.__pushToBuffer(str || data);
+        }
+        else {
+            addonTerminal.write(str || data);
+        }
+    }
+    addonTerminal.__sendData = function (data) {
+        if (socket.readyState !== 1) {
+            return;
+        }
+        socket.send(data);
     };
-
-    socket.addEventListener('message', term._getMessage);
-
+    socket.addEventListener('message', addonTerminal.__getMessage);
     if (bidirectional) {
-      term.on('data', term._sendData);
+        addonTerminal.on('data', addonTerminal.__sendData);
     }
-
-    socket.addEventListener('close', term.detach.bind(term, socket));
-    socket.addEventListener('error', term.detach.bind(term, socket));
-  };
-
-  /**
-   * Detaches the given terminal from the given socket
-   *
-   * @param {Terminal} term - The terminal to be detached from the given socket.
-   * @param {WebSocket} socket - The socket from which to detach the current
-   *                             terminal.
-   */
-  exports.detach = function (term, socket) {
-    term.off('data', term._sendData);
-
-    socket = (typeof socket == 'undefined') ? term.socket : socket;
-
+    socket.addEventListener('close', function () { return detach(addonTerminal, socket); });
+    socket.addEventListener('error', function () { return detach(addonTerminal, socket); });
+}
+exports.attach = attach;
+function detach(term, socket) {
+    var addonTerminal = term;
+    addonTerminal.off('data', addonTerminal.__sendData);
+    socket = (typeof socket === 'undefined') ? addonTerminal.__socket : socket;
     if (socket) {
-      socket.removeEventListener('message', term._getMessage);
+        socket.removeEventListener('message', addonTerminal.__getMessage);
     }
+    delete addonTerminal.__socket;
+}
+exports.detach = detach;
+function apply(terminalConstructor) {
+    terminalConstructor.prototype.attach = function (socket, bidirectional, buffered) {
+        attach(this, socket, bidirectional, buffered);
+    };
+    terminalConstructor.prototype.detach = function (socket) {
+        detach(this, socket);
+    };
+}
+exports.apply = apply;
 
-    delete term.socket;
-  };
 
-  /**
-   * Attaches the current terminal to the given socket
-   *
-   * @param {WebSocket} socket - The socket to attach the current terminal.
-   * @param {boolean} bidirectional - Whether the terminal should send data
-   *                                  to the socket as well.
-   * @param {boolean} buffered - Whether the rendering of incoming data
-   *                             should happen instantly or at a maximum
-   *                             frequency of 1 rendering per 10ms.
-   */
-  Terminal.prototype.attach = function (socket, bidirectional, buffered) {
-    return exports.attach(this, socket, bidirectional, buffered);
-  };
 
-  /**
-   * Detaches the current terminal from the given socket.
-   *
-   * @param {WebSocket} socket - The socket from which to detach the current
-   *                             terminal.
-   */
-  Terminal.prototype.detach = function (socket) {
-    return exports.detach(this, socket);
-  };
-
-  return exports;
+},{}]},{},[1])(1)
 });
+//# sourceMappingURL=attach.js.map
