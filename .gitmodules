@@ -1,3 +1,6 @@
 [submodule "xterm"]
 	path = xterm
 	url = https://github.com/xtermjs/xterm.js
+[submodule "static/zmodemjs"]
+	path = static/zmodemjs
+	url = https://github.com/FGasper/zmodemjs
