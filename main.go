@@ -10,7 +10,6 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/admpub/web-terminal/config"
 	"github.com/admpub/web-terminal/handler"
-	"golang.org/x/net/websocket"
 )
 
 func init() {
@@ -25,12 +24,7 @@ func main() {
 	config.Default.SetDefault()
 
 	appRoot := config.Default.APPRoot
-	http.Handle(appRoot+"replay", websocket.Handler(handler.Replay))
-	http.Handle(appRoot+"ssh", websocket.Handler(handler.SSHShell))
-	http.Handle(appRoot+"telnet", websocket.Handler(handler.TelnetShell))
-	http.Handle(appRoot+"cmd", websocket.Handler(handler.ExecShell))
-	http.Handle(appRoot+"cmd2", websocket.Handler(handler.ExecShell2))
-	http.Handle(appRoot+"ssh_exec", websocket.Handler(handler.SSHExec))
+	handler.Register(appRoot, http.Handle)
 
 	templateBox, err := rice.FindBox("static")
 	if err != nil {

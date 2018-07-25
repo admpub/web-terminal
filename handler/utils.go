@@ -3,6 +3,7 @@ package handler
 import (
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,14 +14,14 @@ import (
 
 	"github.com/admpub/web-terminal/config"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/text/transform"
-
+	"golang.org/x/net/websocket"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/encoding/korean"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/encoding/traditionalchinese"
 	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
 var (
@@ -255,4 +256,18 @@ func addMibDir(args []string) []string {
 		args = newArgs
 	}
 	return args
+}
+
+func Register(appRoot string, routeRegister func(string, http.Handler)) {
+	if len(appRoot) == 0 {
+		appRoot = `/`
+	} else if !strings.HasSuffix(appRoot, `/`) {
+		appRoot += `/`
+	}
+	routeRegister(appRoot+"replay", websocket.Handler(Replay))
+	routeRegister(appRoot+"ssh", websocket.Handler(SSHShell))
+	routeRegister(appRoot+"telnet", websocket.Handler(TelnetShell))
+	routeRegister(appRoot+"cmd", websocket.Handler(ExecShell))
+	routeRegister(appRoot+"cmd2", websocket.Handler(ExecShell2))
+	routeRegister(appRoot+"ssh_exec", websocket.Handler(SSHExec))
 }
