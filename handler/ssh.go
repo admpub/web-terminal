@@ -75,17 +75,17 @@ func SSHShell(ws *websocket.Conn) {
 		}
 	}()
 
-	hostname := ws.Request().URL.Query().Get("hostname")
-	port := ws.Request().URL.Query().Get("port")
+	hostname := ParamGet(ws, "hostname")
+	port := ParamGet(ws, "port")
 	if 0 == len(port) {
 		port = "22"
 	}
-	user := ws.Request().URL.Query().Get("user")
-	pwd := ws.Request().URL.Query().Get("password")
-	columns := toInt(ws.Request().URL.Query().Get("columns"), 120)
-	rows := toInt(ws.Request().URL.Query().Get("rows"), 80)
+	user := ParamGet(ws, "user")
+	pwd := ParamGet(ws, "password")
+	columns := toInt(ParamGet(ws, "columns"), 120)
+	rows := toInt(ParamGet(ws, "rows"), 80)
 	debug := config.Default.Debug
-	if "true" == strings.ToLower(ws.Request().URL.Query().Get("debug")) {
+	if "true" == strings.ToLower(ParamGet(ws, "debug")) {
 		debug = true
 	}
 
@@ -153,20 +153,20 @@ func SSHExec(ws *websocket.Conn) {
 		}
 	}()
 
-	hostname := ws.Request().URL.Query().Get("hostname")
-	port := ws.Request().URL.Query().Get("port")
+	hostname := ParamGet(ws, "hostname")
+	port := ParamGet(ws, "port")
 	if len(port) == 0 {
 		port = "22"
 	}
-	user := ws.Request().URL.Query().Get("user")
-	pwd := ws.Request().URL.Query().Get("password")
+	user := ParamGet(ws, "user")
+	pwd := ParamGet(ws, "password")
 	debug := config.Default.Debug
-	if "true" == strings.ToLower(ws.Request().URL.Query().Get("debug")) {
+	if "true" == strings.ToLower(ParamGet(ws, "debug")) {
 		debug = true
 	}
 
-	cmd := ws.Request().URL.Query().Get("cmd")
-	cmdAlias := ws.Request().URL.Query().Get("dump_file")
+	cmd := ParamGet(ws, "cmd")
+	cmdAlias := ParamGet(ws, "dump_file")
 	if "" == cmdAlias {
 		cmdAlias = strings.Replace(cmd, " ", "_", -1)
 	}

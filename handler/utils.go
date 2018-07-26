@@ -27,6 +27,11 @@ import (
 var (
 	supportedCiphers = SupportedCiphers()
 	commands         = map[string]string{}
+
+	//ParamGet 获取参数值
+	ParamGet = func(ws *websocket.Conn, name string) string {
+		return ws.Request().URL.Query().Get(name)
+	}
 )
 
 func init() {
