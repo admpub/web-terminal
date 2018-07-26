@@ -1,3 +1,11 @@
+
+Terminal.applyAddon(attach);
+Terminal.applyAddon(fit);
+Terminal.applyAddon(fullscreen);
+Terminal.applyAddon(search);
+Terminal.applyAddon(webLinks);
+Terminal.applyAddon(winptyCompat);
+
 var term,
     socket
 
