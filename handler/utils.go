@@ -172,7 +172,7 @@ func fillCommands(executableFolder string) {
 func saveSessionKey(pa string, args []string, wd string) {
 	args = removeBatchOption(args)
 	var cmd = exec.Command(pa, args...)
-	if "" != wd {
+	if len(wd) > 0 {
 		cmd.Dir = wd
 	}
 
