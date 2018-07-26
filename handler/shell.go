@@ -20,11 +20,11 @@ func ExecShell(ws *websocket.Conn) {
 	defer ws.Close()
 
 	queryParams := ws.Request().URL.Query()
-	wd := queryParams.Get("wd")
-	charset := queryParams.Get("charset")
-	pa := queryParams.Get("exec")
-	timeout := queryParams.Get("timeout")
-	stdin := queryParams.Get("stdin")
+	wd := ParamGet(ws, "wd")
+	charset := ParamGet(ws, "charset")
+	pa := ParamGet(ws, "exec")
+	timeout := ParamGet(ws, "timeout")
+	stdin := ParamGet(ws, "stdin")
 
 	args := make([]string, 0, 10)
 	for i := 0; i < 1000; i++ {
@@ -43,12 +43,11 @@ func ExecShell(ws *websocket.Conn) {
 func ExecShell2(ws *websocket.Conn) {
 	defer ws.Close()
 
-	queryParams := ws.Request().URL.Query()
-	wd := queryParams.Get("wd")
-	charset := queryParams.Get("charset")
-	pa := queryParams.Get("exec")
-	timeout := queryParams.Get("timeout")
-	stdin := queryParams.Get("stdin")
+	wd := ParamGet(ws, "wd")
+	charset := ParamGet(ws, "charset")
+	pa := ParamGet(ws, "exec")
+	timeout := ParamGet(ws, "timeout")
+	stdin := ParamGet(ws, "stdin")
 
 	ss, e := shellwords.Split(pa)
 	if nil != e {
