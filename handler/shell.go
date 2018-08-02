@@ -62,7 +62,7 @@ func ExecShell2(ws *websocket.Conn) {
 }
 
 func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin, timeoutStr string) {
-	if "" == charset {
+	if 0 == len(charset) {
 		if "windows" == runtime.GOOS {
 			charset = "GB18030"
 		} else {
@@ -71,7 +71,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 	}
 
 	timeout := 10 * time.Minute
-	if "" != timeoutStr {
+	if len(timeoutStr) > 0 {
 		if t, e := time.ParseDuration(timeoutStr); nil == e {
 			timeout = t
 		}
@@ -134,7 +134,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 	}
 
 	cmd := exec.Command(pa, args...)
-	if "" != wd {
+	if len(wd) > 0 {
 		cmd.Dir = wd
 	}
 	if stdin == "on" {
@@ -156,7 +156,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 		newArgs[0] = pa
 		copy(newArgs[1:], args)
 		cmd = exec.Command(config.Default.SHExecute, newArgs...)
-		if "" != wd {
+		if len(wd) > 0 {
 			cmd.Dir = wd
 		}
 		cmd.Stdin = ws
