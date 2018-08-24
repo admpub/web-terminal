@@ -39,8 +39,8 @@ func NewSSHConfig(ws *websocket.Conn, account *AccountConfig) (*ssh.ClientConfig
 		User:            account.User,
 		Auth:            []ssh.AuthMethod{},
 	}
-	var signer ssh.Signer
 	if account.Passphrase != nil {
+		var signer ssh.Signer
 		pemBytes := account.Passphrase
 		if account.Passphrase != nil {
 			passphraseBytes := account.Passphrase
