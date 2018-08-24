@@ -3,6 +3,9 @@ package handler
 import (
 	"bufio"
 	"bytes"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +21,14 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func NewSSHConfig(ws *websocket.Conn, user, pwd string) *ssh.ClientConfig {
+type AccountConfig struct {
+	User       string
+	Password   string
+	PrivateKey []byte
+	Passphrase []byte
+}
+
+func NewSSHConfig(ws *websocket.Conn, account *AccountConfig) (*ssh.ClientConfig, error) {
 	passwordCount := 0
 	emptyInteractiveCount := 0
 	reader := bufio.NewReader(ws)
@@ -26,41 +36,67 @@ func NewSSHConfig(ws *websocket.Conn, user, pwd string) *ssh.ClientConfig {
 	sshConfig := &ssh.ClientConfig{
 		Config:          ssh.Config{Ciphers: supportedCiphers},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		User:            user,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(pwd),
-			ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-				if len(questions) == 0 {
-					emptyInteractiveCount++
-					if emptyInteractiveCount++; emptyInteractiveCount > 50 {
-						return nil, errors.New("interactive count is too much")
-					}
-					return []string{}, nil
-				}
-				for _, question := range questions {
-					io.WriteString(ws, question)
-
-					switch strings.ToLower(strings.TrimSpace(question)) {
-					case "password:", "password as":
-						passwordCount++
-						if passwordCount == 1 {
-							answers = append(answers, pwd)
-							break
-						}
-						fallthrough
-					default:
-						line, _, e := reader.ReadLine()
-						if nil != e {
-							return nil, e
-						}
-						answers = append(answers, string(line))
-					}
-				}
-				return answers, nil
-			}),
-		},
+		User:            account.User,
+		Auth:            []ssh.AuthMethod{},
 	}
-	return sshConfig
+	var signer ssh.Signer
+	if account.Passphrase != nil {
+		pemBytes := account.Passphrase
+		if account.Passphrase != nil {
+			passphraseBytes := account.Passphrase
+			block, _ := pem.Decode(pemBytes)
+			pemBlock, err := x509.DecryptPEMBlock(block, passphraseBytes)
+			if err != nil {
+				return sshConfig, err
+			}
+			keyString := base64.StdEncoding.EncodeToString(pemBlock)
+			key := fmt.Sprintf("-----BEGIN %s-----\n%s\n-----END %s-----\n", block.Type, keyString, block.Type)
+			if signer, err = ssh.ParsePrivateKey([]byte(key)); err != nil {
+				return sshConfig, err
+			}
+		} else {
+			var err error
+			if signer, err = ssh.ParsePrivateKey(pemBytes); err != nil {
+				return sshConfig, err
+			}
+		}
+		sshConfig.Auth = append(sshConfig.Auth, ssh.PublicKeys(signer))
+	}
+
+	if len(account.Password) > 0 {
+		sshConfig.Auth = append(sshConfig.Auth, ssh.Password(account.Password))
+		sshConfig.Auth = append(sshConfig.Auth, ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+			if len(questions) == 0 {
+				emptyInteractiveCount++
+				if emptyInteractiveCount++; emptyInteractiveCount > 50 {
+					return nil, errors.New("interactive count is too much")
+				}
+				return []string{}, nil
+			}
+			for _, question := range questions {
+				io.WriteString(ws, question)
+
+				switch strings.ToLower(strings.TrimSpace(question)) {
+				case "password:", "password as":
+					passwordCount++
+					if passwordCount == 1 {
+						answers = append(answers, account.Password)
+						break
+					}
+					fallthrough
+				default:
+					line, _, e := reader.ReadLine()
+					if nil != e {
+						return nil, e
+					}
+					answers = append(answers, string(line))
+				}
+			}
+			return answers, nil
+		}))
+	}
+
+	return sshConfig, nil
 }
 
 func SSHShell(ws *websocket.Conn) {
@@ -90,7 +126,21 @@ func SSHShell(ws *websocket.Conn) {
 	}
 
 	// Dial code is taken from the ssh package example
-	sshConfig := NewSSHConfig(ws, user, pwd)
+	account := &AccountConfig{
+		User:     user,
+		Password: pwd,
+	}
+	if privKey := ParamGet(ws, "privateKey"); len(privKey) > 0 {
+		account.PrivateKey = []byte(privKey)
+	}
+	if passphrase := ParamGet(ws, "passphrase"); len(passphrase) > 0 {
+		account.Passphrase = []byte(passphrase)
+	}
+	sshConfig, err := NewSSHConfig(ws, account)
+	if err != nil {
+		logString(ws, "Failed to dial: "+err.Error())
+		return
+	}
 	client, err := ssh.Dial("tcp", hostname+":"+port, sshConfig)
 	if err != nil {
 		logString(ws, "Failed to dial: "+err.Error())
@@ -172,7 +222,21 @@ func SSHExec(ws *websocket.Conn) {
 	}
 
 	// Dial code is taken from the ssh package example
-	sshConfig := NewSSHConfig(ws, user, pwd)
+	account := &AccountConfig{
+		User:     user,
+		Password: pwd,
+	}
+	if privKey := ParamGet(ws, "privateKey"); len(privKey) > 0 {
+		account.PrivateKey = []byte(privKey)
+	}
+	if passphrase := ParamGet(ws, "passphrase"); len(passphrase) > 0 {
+		account.Passphrase = []byte(passphrase)
+	}
+	sshConfig, err := NewSSHConfig(ws, account)
+	if err != nil {
+		logString(ws, "Failed to dial: "+err.Error())
+		return
+	}
 	client, err := ssh.Dial("tcp", hostname+":"+port, sshConfig)
 	if err != nil {
 		logString(ws, "Failed to dial: "+err.Error())
