@@ -96,6 +96,7 @@ func NewSSHConfig(ws *websocket.Conn, account *AccountConfig) (*ssh.ClientConfig
 		}))
 	}
 
+	sshConfig.SetDefaults()
 	return sshConfig, nil
 }
 
