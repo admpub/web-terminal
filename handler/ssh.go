@@ -3,9 +3,6 @@ package handler
 import (
 	"bufio"
 	"bytes"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -39,26 +36,17 @@ func NewSSHConfig(ws *websocket.Conn, account *AccountConfig) (*ssh.ClientConfig
 		User:            account.User,
 		Auth:            []ssh.AuthMethod{},
 	}
-	if account.Passphrase != nil {
+	if account.PrivateKey != nil {
 		var signer ssh.Signer
-		pemBytes := account.Passphrase
+		var err error
+		pemBytes := account.PrivateKey
 		if account.Passphrase != nil {
-			passphraseBytes := account.Passphrase
-			block, _ := pem.Decode(pemBytes)
-			pemBlock, err := x509.DecryptPEMBlock(block, passphraseBytes)
-			if err != nil {
-				return sshConfig, err
-			}
-			keyString := base64.StdEncoding.EncodeToString(pemBlock)
-			key := fmt.Sprintf("-----BEGIN %s-----\n%s\n-----END %s-----\n", block.Type, keyString, block.Type)
-			if signer, err = ssh.ParsePrivateKey([]byte(key)); err != nil {
-				return sshConfig, err
-			}
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(pemBytes, account.Passphrase)
 		} else {
-			var err error
-			if signer, err = ssh.ParsePrivateKey(pemBytes); err != nil {
-				return sshConfig, err
-			}
+			signer, err = ssh.ParsePrivateKey(pemBytes)
+		}
+		if err != nil {
+			return sshConfig, err
 		}
 		sshConfig.Auth = append(sshConfig.Auth, ssh.PublicKeys(signer))
 	}
