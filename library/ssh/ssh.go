@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -18,8 +19,12 @@ type SSH struct {
 	Session *ssh.Session
 }
 
-func (s *SSH) Connect(addr string) error {
-	client, err := ssh.Dial("tcp", addr, s.Config)
+func (s *SSH) Connect(ip string, ports ...int) error {
+	port := 22
+	if len(ports) > 0 {
+		port = ports[0]
+	}
+	client, err := ssh.Dial("tcp", fmt.Sprintf(`%s:%d`, ip, port), s.Config)
 	if err != nil {
 		return errors.New("Failed to dial: " + err.Error())
 	}
