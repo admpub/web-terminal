@@ -9,13 +9,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func NewSSHConfig(r io.Reader, writer io.Writer, account *AccountConfig) (*ssh.ClientConfig, error) {
-	var (
-		reader *bufio.Reader
-	)
-	if r != nil {
-		reader = bufio.NewReader(r)
-	}
+func NewSSHConfig(reader io.Reader, writer io.Writer, account *AccountConfig) (*ssh.ClientConfig, error) {
 	// Dial code is taken from the ssh package example
 	sshConfig := &ssh.ClientConfig{
 		Config:          ssh.Config{Ciphers: supportedCiphers},
@@ -41,7 +35,8 @@ func NewSSHConfig(r io.Reader, writer io.Writer, account *AccountConfig) (*ssh.C
 	if len(account.Password) > 0 {
 		sshConfig.Auth = append(sshConfig.Auth, ssh.Password(account.Password))
 		if reader != nil && writer != nil {
-			sshConfig.Auth = append(sshConfig.Auth, ssh.KeyboardInteractive(KeyboardInteractivefunc(reader, writer, account.Password)))
+			bufReader := bufio.NewReader(reader)
+			sshConfig.Auth = append(sshConfig.Auth, ssh.KeyboardInteractive(KeyboardInteractivefunc(bufReader, writer, account.Password)))
 		}
 	}
 
