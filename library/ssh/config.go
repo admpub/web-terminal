@@ -10,9 +10,12 @@ import (
 )
 
 func NewSSHConfig(r io.Reader, writer io.Writer, account *AccountConfig) (*ssh.ClientConfig, error) {
-	passwordCount := 0
-	emptyInteractiveCount := 0
-	reader := bufio.NewReader(r)
+	var (
+		reader *bufio.Reader
+	)
+	if r != nil {
+		reader = bufio.NewReader(r)
+	}
 	// Dial code is taken from the ssh package example
 	sshConfig := &ssh.ClientConfig{
 		Config:          ssh.Config{Ciphers: supportedCiphers},
@@ -37,37 +40,47 @@ func NewSSHConfig(r io.Reader, writer io.Writer, account *AccountConfig) (*ssh.C
 
 	if len(account.Password) > 0 {
 		sshConfig.Auth = append(sshConfig.Auth, ssh.Password(account.Password))
-		sshConfig.Auth = append(sshConfig.Auth, ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-			if len(questions) == 0 {
-				emptyInteractiveCount++
-				if emptyInteractiveCount++; emptyInteractiveCount > 50 {
-					return nil, errors.New("interactive count is too much")
-				}
-				return []string{}, nil
-			}
-			for _, question := range questions {
-				io.WriteString(writer, question)
-
-				switch strings.ToLower(strings.TrimSpace(question)) {
-				case "password:", "password as":
-					passwordCount++
-					if passwordCount == 1 {
-						answers = append(answers, account.Password)
-						break
-					}
-					fallthrough
-				default:
-					line, _, e := reader.ReadLine()
-					if nil != e {
-						return nil, e
-					}
-					answers = append(answers, string(line))
-				}
-			}
-			return answers, nil
-		}))
+		if reader != nil && writer != nil {
+			sshConfig.Auth = append(sshConfig.Auth, ssh.KeyboardInteractive(KeyboardInteractivefunc(reader, writer, account.Password)))
+		}
 	}
 
 	sshConfig.SetDefaults()
 	return sshConfig, nil
+}
+
+func KeyboardInteractivefunc(reader *bufio.Reader, writer io.Writer, password string) func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+	var (
+		passwordCount         int
+		emptyInteractiveCount int
+	)
+	return func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+		if len(questions) == 0 {
+			emptyInteractiveCount++
+			if emptyInteractiveCount++; emptyInteractiveCount > 50 {
+				return nil, errors.New("interactive count is too much")
+			}
+			return []string{}, nil
+		}
+		for _, question := range questions {
+			io.WriteString(writer, question)
+
+			switch strings.ToLower(strings.TrimSpace(question)) {
+			case "password:", "password as":
+				passwordCount++
+				if passwordCount == 1 {
+					answers = append(answers, password)
+					break
+				}
+				fallthrough
+			default:
+				line, _, e := reader.ReadLine()
+				if nil != e {
+					return nil, e
+				}
+				answers = append(answers, string(line))
+			}
+		}
+		return answers, nil
+	}
 }
