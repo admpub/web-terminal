@@ -64,18 +64,14 @@ func SSHShell(ws *websocket.Conn) {
 		logString(ws, "Failed to dial: "+err.Error())
 		return
 	}
-	client, err := ssh.Dial("tcp", hostname+":"+port, sshConfig)
+	sshClient := sshx.New(sshConfig)
+	err = sshClient.Connect(hostname + ":" + port)
 	if err != nil {
-		logString(ws, "Failed to dial: "+err.Error())
+		logString(ws, err.Error())
 		return
 	}
-
-	session, err := client.NewSession()
-	if err != nil {
-		logString(ws, "Failed to create session: "+err.Error())
-		return
-	}
-	defer session.Close()
+	session := sshClient.Session
+	defer sshClient.Close()
 
 	// Set up terminal modes
 	modes := ssh.TerminalModes{
@@ -160,18 +156,14 @@ func SSHExec(ws *websocket.Conn) {
 		logString(ws, "Failed to dial: "+err.Error())
 		return
 	}
-	client, err := ssh.Dial("tcp", hostname+":"+port, sshConfig)
+	sshClient := sshx.New(sshConfig)
+	err = sshClient.Connect(hostname + ":" + port)
 	if err != nil {
-		logString(ws, "Failed to dial: "+err.Error())
+		logString(ws, err.Error())
 		return
 	}
-
-	session, err := client.NewSession()
-	if err != nil {
-		logString(ws, "Failed to create session: "+err.Error())
-		return
-	}
-	defer session.Close()
+	session := sshClient.Session
+	defer sshClient.Close()
 
 	var combinedOut io.Writer = ws
 	if debug {
