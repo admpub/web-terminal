@@ -3,7 +3,6 @@ package handler
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,78 +13,13 @@ import (
 	"time"
 
 	"github.com/admpub/web-terminal/config"
+	sshx "github.com/admpub/web-terminal/library/ssh"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/websocket"
 )
 
-type AccountConfig struct {
-	User       string
-	Password   string
-	PrivateKey []byte
-	Passphrase []byte
-}
-
-func NewSSHConfig(ws *websocket.Conn, account *AccountConfig) (*ssh.ClientConfig, error) {
-	passwordCount := 0
-	emptyInteractiveCount := 0
-	reader := bufio.NewReader(ws)
-	// Dial code is taken from the ssh package example
-	sshConfig := &ssh.ClientConfig{
-		Config:          ssh.Config{Ciphers: supportedCiphers},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		User:            account.User,
-		Auth:            []ssh.AuthMethod{},
-	}
-	if account.PrivateKey != nil {
-		var signer ssh.Signer
-		var err error
-		pemBytes := account.PrivateKey
-		if account.Passphrase != nil {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(pemBytes, account.Passphrase)
-		} else {
-			signer, err = ssh.ParsePrivateKey(pemBytes)
-		}
-		if err != nil {
-			return sshConfig, err
-		}
-		sshConfig.Auth = append(sshConfig.Auth, ssh.PublicKeys(signer))
-	}
-
-	if len(account.Password) > 0 {
-		sshConfig.Auth = append(sshConfig.Auth, ssh.Password(account.Password))
-		sshConfig.Auth = append(sshConfig.Auth, ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-			if len(questions) == 0 {
-				emptyInteractiveCount++
-				if emptyInteractiveCount++; emptyInteractiveCount > 50 {
-					return nil, errors.New("interactive count is too much")
-				}
-				return []string{}, nil
-			}
-			for _, question := range questions {
-				io.WriteString(ws, question)
-
-				switch strings.ToLower(strings.TrimSpace(question)) {
-				case "password:", "password as":
-					passwordCount++
-					if passwordCount == 1 {
-						answers = append(answers, account.Password)
-						break
-					}
-					fallthrough
-				default:
-					line, _, e := reader.ReadLine()
-					if nil != e {
-						return nil, e
-					}
-					answers = append(answers, string(line))
-				}
-			}
-			return answers, nil
-		}))
-	}
-
-	sshConfig.SetDefaults()
-	return sshConfig, nil
+func NewSSHConfig(ws *websocket.Conn, account *sshx.AccountConfig) (*ssh.ClientConfig, error) {
+	return sshx.NewSSHConfig(bufio.NewReader(ws), ws, account)
 }
 
 func SSHShell(ws *websocket.Conn) {
@@ -115,7 +49,7 @@ func SSHShell(ws *websocket.Conn) {
 	}
 
 	// Dial code is taken from the ssh package example
-	account := &AccountConfig{
+	account := &sshx.AccountConfig{
 		User:     user,
 		Password: pwd,
 	}
@@ -211,7 +145,7 @@ func SSHExec(ws *websocket.Conn) {
 	}
 
 	// Dial code is taken from the ssh package example
-	account := &AccountConfig{
+	account := &sshx.AccountConfig{
 		User:     user,
 		Password: pwd,
 	}

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/admpub/web-terminal/config"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/websocket"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/japanese"
@@ -25,8 +24,7 @@ import (
 )
 
 var (
-	supportedCiphers = SupportedCiphers()
-	commands         = map[string]string{}
+	commands = map[string]string{}
 
 	//ParamGet 获取参数值
 	ParamGet = func(ws *websocket.Conn, name string) string {
@@ -74,25 +72,6 @@ func CharsetEncoding(charset string) encoding.Encoding {
 	default:
 		return nil
 	}
-}
-
-func SupportedCiphers() []string {
-	config := &ssh.ClientConfig{}
-	config.SetDefaults()
-	for _, cipher := range []string{"aes128-cbc"} {
-		found := false
-		for _, defaultCipher := range config.Ciphers {
-			if cipher == defaultCipher {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			config.Ciphers = append(config.Ciphers, cipher)
-		}
-	}
-	return config.Ciphers
 }
 
 func warp(dst io.ReadCloser, dump io.Writer) io.ReadCloser {
