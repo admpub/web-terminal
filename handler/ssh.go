@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -65,7 +66,12 @@ func SSHShell(ws *websocket.Conn) {
 		return
 	}
 	sshClient := sshx.New(sshConfig)
-	err = sshClient.Connect(hostname + ":" + port)
+	portN, err := strconv.Atoi(port)
+	if err != nil {
+		logString(ws, err.Error())
+		return
+	}
+	err = sshClient.Connect(hostname, portN)
 	if err != nil {
 		logString(ws, err.Error())
 		return
@@ -136,7 +142,7 @@ func SSHExec(ws *websocket.Conn) {
 
 	cmd := ParamGet(ws, "cmd")
 	cmdAlias := ParamGet(ws, "dump_file")
-	if "" == cmdAlias {
+	if 0 == len(cmdAlias) {
 		cmdAlias = strings.Replace(cmd, " ", "_", -1)
 	}
 
@@ -157,7 +163,12 @@ func SSHExec(ws *websocket.Conn) {
 		return
 	}
 	sshClient := sshx.New(sshConfig)
-	err = sshClient.Connect(hostname + ":" + port)
+	portN, err := strconv.Atoi(port)
+	if err != nil {
+		logString(ws, err.Error())
+		return
+	}
+	err = sshClient.Connect(hostname, portN)
 	if err != nil {
 		logString(ws, err.Error())
 		return
