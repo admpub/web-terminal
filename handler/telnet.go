@@ -14,12 +14,13 @@ import (
 
 func TelnetShell(ws *websocket.Conn) {
 	defer ws.Close()
-	hostname := ParamGet(ws, "hostname")
-	port := ParamGet(ws, "port")
+	ctx := NewContext(ws)
+	hostname := ParamGet(ctx, "hostname")
+	port := ParamGet(ctx, "port")
 	if 0 == len(port) {
 		port = "23"
 	}
-	charset := ParamGet(ws, "charset")
+	charset := ParamGet(ctx, "charset")
 	if 0 == len(charset) {
 		if "windows" == runtime.GOOS {
 			charset = "GB18030"
@@ -27,8 +28,8 @@ func TelnetShell(ws *websocket.Conn) {
 			charset = "UTF-8"
 		}
 	}
-	//columns := toInt(ParamGet(ws,"columns"), 80)
-	//rows := toInt(ParamGet(ws,"rows"), 40)
+	//columns := toInt(ParamGet(ctx,"columns"), 80)
+	//rows := toInt(ParamGet(ctx,"rows"), 40)
 
 	var dumpOut io.WriteCloser
 	var dumpIn io.WriteCloser
@@ -49,7 +50,7 @@ func TelnetShell(ws *websocket.Conn) {
 	}()
 
 	debug := config.Default.Debug
-	if "true" == strings.ToLower(ParamGet(ws, "debug")) {
+	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
 		debug = true
 	}
 
@@ -70,8 +71,8 @@ func TelnetShell(ws *websocket.Conn) {
 		logString(nil, "failed to create connection: "+e.Error())
 		return
 	}
-	columns := toInt(ParamGet(ws, "columns"), 80)
-	rows := toInt(ParamGet(ws, "rows"), 40)
+	columns := toInt(ParamGet(ctx, "columns"), 80)
+	rows := toInt(ParamGet(ctx, "rows"), 40)
 	conn.SetWindowSize(byte(rows), byte(columns))
 
 	go func() {

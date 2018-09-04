@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/admpub/web-terminal/config"
@@ -27,10 +28,22 @@ var (
 	commands = map[string]string{}
 
 	//ParamGet 获取参数值
-	ParamGet = func(ws *websocket.Conn, name string) string {
-		return ws.Request().URL.Query().Get(name)
+	ParamGet = func(ctx *Context, name string) string {
+		return ctx.Request().URL.Query().Get(name)
 	}
 )
+
+type Context struct {
+	*websocket.Conn
+	Data sync.Map
+}
+
+func NewContext(ws *websocket.Conn) *Context {
+	return &Context{
+		Conn: ws,
+		Data: sync.Map{},
+	}
+}
 
 func init() {
 	fillCommands(config.ExecutableFolder)

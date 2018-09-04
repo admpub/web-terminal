@@ -11,8 +11,9 @@ import (
 // Replay .
 func Replay(ws *websocket.Conn) {
 	defer ws.Close()
-	fileName := ParamGet(ws, "file")
-	charset := ParamGet(ws, "charset")
+	ctx := NewContext(ws)
+	fileName := ParamGet(ctx, "file")
+	charset := ParamGet(ctx, "charset")
 	if 0 == len(charset) {
 		if "windows" == runtime.GOOS {
 			charset = "GB18030"

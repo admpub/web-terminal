@@ -18,13 +18,13 @@ import (
 
 func ExecShell(ws *websocket.Conn) {
 	defer ws.Close()
-
+	ctx := NewContext(ws)
 	queryParams := ws.Request().URL.Query()
-	wd := ParamGet(ws, "wd")
-	charset := ParamGet(ws, "charset")
-	pa := ParamGet(ws, "exec")
-	timeout := ParamGet(ws, "timeout")
-	stdin := ParamGet(ws, "stdin")
+	wd := ParamGet(ctx, "wd")
+	charset := ParamGet(ctx, "charset")
+	pa := ParamGet(ctx, "exec")
+	timeout := ParamGet(ctx, "timeout")
+	stdin := ParamGet(ctx, "stdin")
 
 	args := make([]string, 0, 10)
 	for i := 0; i < 1000; i++ {
@@ -42,12 +42,12 @@ func ExecShell(ws *websocket.Conn) {
 
 func ExecShell2(ws *websocket.Conn) {
 	defer ws.Close()
-
-	wd := ParamGet(ws, "wd")
-	charset := ParamGet(ws, "charset")
-	pa := ParamGet(ws, "exec")
-	timeout := ParamGet(ws, "timeout")
-	stdin := ParamGet(ws, "stdin")
+	ctx := NewContext(ws)
+	wd := ParamGet(ctx, "wd")
+	charset := ParamGet(ctx, "charset")
+	pa := ParamGet(ctx, "exec")
+	timeout := ParamGet(ctx, "timeout")
+	stdin := ParamGet(ctx, "stdin")
 
 	ss, e := shellwords.Split(pa)
 	if nil != e {
@@ -62,6 +62,7 @@ func ExecShell2(ws *websocket.Conn) {
 }
 
 func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin, timeoutStr string) {
+	//ctx := NewContext(ws)
 	if 0 == len(charset) {
 		if "windows" == runtime.GOOS {
 			charset = "GB18030"

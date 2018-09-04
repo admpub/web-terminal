@@ -34,18 +34,18 @@ func SSHShell(ws *websocket.Conn) {
 			dumpIn.Close()
 		}
 	}()
-
-	hostname := ParamGet(ws, "hostname")
-	port := ParamGet(ws, "port")
+	ctx := NewContext(ws)
+	hostname := ParamGet(ctx, "hostname")
+	port := ParamGet(ctx, "port")
 	if 0 == len(port) {
 		port = "22"
 	}
-	user := ParamGet(ws, "user")
-	pwd := ParamGet(ws, "password")
-	columns := toInt(ParamGet(ws, "columns"), 120)
-	rows := toInt(ParamGet(ws, "rows"), 80)
+	user := ParamGet(ctx, "user")
+	pwd := ParamGet(ctx, "password")
+	columns := toInt(ParamGet(ctx, "columns"), 120)
+	rows := toInt(ParamGet(ctx, "rows"), 80)
 	debug := config.Default.Debug
-	if "true" == strings.ToLower(ParamGet(ws, "debug")) {
+	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
 		debug = true
 	}
 
@@ -54,10 +54,10 @@ func SSHShell(ws *websocket.Conn) {
 		User:     user,
 		Password: pwd,
 	}
-	if privKey := ParamGet(ws, "privateKey"); len(privKey) > 0 {
+	if privKey := ParamGet(ctx, "privateKey"); len(privKey) > 0 {
 		account.PrivateKey = []byte(privKey)
 	}
-	if passphrase := ParamGet(ws, "passphrase"); len(passphrase) > 0 {
+	if passphrase := ParamGet(ctx, "passphrase"); len(passphrase) > 0 {
 		account.Passphrase = []byte(passphrase)
 	}
 	sshConfig, err := NewSSHConfig(ws, account)
@@ -127,21 +127,21 @@ func SSHExec(ws *websocket.Conn) {
 			dumpIn.Close()
 		}
 	}()
-
-	hostname := ParamGet(ws, "hostname")
-	port := ParamGet(ws, "port")
+	ctx := NewContext(ws)
+	hostname := ParamGet(ctx, "hostname")
+	port := ParamGet(ctx, "port")
 	if len(port) == 0 {
 		port = "22"
 	}
-	user := ParamGet(ws, "user")
-	pwd := ParamGet(ws, "password")
+	user := ParamGet(ctx, "user")
+	pwd := ParamGet(ctx, "password")
 	debug := config.Default.Debug
-	if "true" == strings.ToLower(ParamGet(ws, "debug")) {
+	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
 		debug = true
 	}
 
-	cmd := ParamGet(ws, "cmd")
-	cmdAlias := ParamGet(ws, "dump_file")
+	cmd := ParamGet(ctx, "cmd")
+	cmdAlias := ParamGet(ctx, "dump_file")
 	if 0 == len(cmdAlias) {
 		cmdAlias = strings.Replace(cmd, " ", "_", -1)
 	}
@@ -151,10 +151,10 @@ func SSHExec(ws *websocket.Conn) {
 		User:     user,
 		Password: pwd,
 	}
-	if privKey := ParamGet(ws, "privateKey"); len(privKey) > 0 {
+	if privKey := ParamGet(ctx, "privateKey"); len(privKey) > 0 {
 		account.PrivateKey = []byte(privKey)
 	}
-	if passphrase := ParamGet(ws, "passphrase"); len(passphrase) > 0 {
+	if passphrase := ParamGet(ctx, "passphrase"); len(passphrase) > 0 {
 		account.Passphrase = []byte(passphrase)
 	}
 	sshConfig, err := NewSSHConfig(ws, account)
