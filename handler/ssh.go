@@ -81,7 +81,7 @@ func SSHShell(ws *websocket.Conn) {
 
 	// Set up terminal modes
 	modes := ssh.TerminalModes{
-		ssh.ECHO:          1,     // disable echoing
+		ssh.ECHO:          1,     // enable echoing
 		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
 		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 	}
