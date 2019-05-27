@@ -1,13 +1,13 @@
-package handler
+package utils
 
 import "io"
 
-type consoleReader struct {
+type ConsoleReader struct {
 	dst io.ReadCloser
 	out io.Writer
 }
 
-func (w *consoleReader) Read(p []byte) (n int, err error) {
+func (w *ConsoleReader) Read(p []byte) (n int, err error) {
 	n, err = w.dst.Read(p)
 	if n > 0 {
 		w.out.Write(p[:n])
@@ -15,6 +15,6 @@ func (w *consoleReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (w *consoleReader) Close() error {
+func (w *ConsoleReader) Close() error {
 	return w.dst.Close()
 }

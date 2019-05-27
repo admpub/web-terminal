@@ -1,11 +1,11 @@
-package handler
+package utils
 
 import (
 	"bytes"
 	"io"
 )
 
-type matchWriter struct {
+type MatchWriter struct {
 	out      io.Writer
 	excepted []byte
 	buf      bytes.Buffer
@@ -13,7 +13,7 @@ type matchWriter struct {
 	matched  bool
 }
 
-func (w *matchWriter) match(p []byte) {
+func (w *MatchWriter) match(p []byte) {
 	if len(p) > len(w.excepted) {
 		if bytes.Contains(p, w.excepted) {
 			w.matched = true
@@ -50,7 +50,7 @@ func (w *matchWriter) match(p []byte) {
 	w.buf.Truncate(len(reserved))
 }
 
-func (w *matchWriter) Write(p []byte) (c int, e error) {
+func (w *MatchWriter) Write(p []byte) (c int, e error) {
 	c, e = w.out.Write(p)
 	if !w.matched {
 		w.match(p)
