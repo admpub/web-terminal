@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,15 @@ var CharsetList = map[string]encoding.Encoding{
 	`UTF-16-BOM`:    unicode.UTF16(unicode.BigEndian, unicode.UseBOM),
 	`UTF-16-BE-BOM`: unicode.UTF16(unicode.BigEndian, unicode.UseBOM),
 	`UTF-16-LE-BOM`: unicode.UTF16(unicode.LittleEndian, unicode.UseBOM),
+}
+
+func SupportedCharsets() []string {
+	r := []string{}
+	for k := range CharsetList {
+		r = append(r, k)
+	}
+	sort.Strings(r)
+	return r
 }
 
 func CharsetEncoding(charset string) encoding.Encoding {
