@@ -105,13 +105,16 @@ func SSHShell(ctx *Context) error {
 	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
 		debug = true
 	}
-	hostConfig, err := getHostConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to dial:: %w", err)
+
+	if ctx.Config.End == nil {
+		hostConfig, err := getHostConfig(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to dial:: %w", err)
+		}
+		ctx.Config.SetEnd(hostConfig)
 	}
-	ctx.Config.SetEnd(hostConfig)
 	sshClient := sshx.New(ctx.Config)
-	err = sshClient.Connect()
+	err := sshClient.Connect()
 	if err != nil {
 		return err
 	}
@@ -129,6 +132,7 @@ func SSHShell(ctx *Context) error {
 		return fmt.Errorf("request for pseudo terminal failed: %w", err)
 	}
 	ws := ctx.Conn
+	hostConfig := ctx.Config.End
 	combinedOut := decodeBy(hostConfig.Account.Charset, ws)
 	if debug {
 		dumpOut, err = os.OpenFile(config.Default.LogDir+hostConfig.Host+".dump_ssh_out.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
@@ -175,19 +179,21 @@ func SSHExec(ctx *Context) error {
 		cmdAlias = strings.Replace(cmd, " ", "_", -1)
 	}
 	ws := ctx.Conn
-	hostConfig, err := getHostConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to dial: %w", err)
+	if ctx.Config.End == nil {
+		hostConfig, err := getHostConfig(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to dial: %w", err)
+		}
+		ctx.Config.SetEnd(hostConfig)
 	}
-	ctx.Config.SetEnd(hostConfig)
 	sshClient := sshx.New(ctx.Config)
-	err = sshClient.Connect()
+	err := sshClient.Connect()
 	if err != nil {
 		return err
 	}
 	session := sshClient.Session
 	defer sshClient.Close()
-
+	hostConfig := ctx.Config.End
 	combinedOut := decodeBy(hostConfig.Account.Charset, ws)
 	if debug {
 		dumpOut, err = os.OpenFile(config.Default.LogDir+hostConfig.Host+"_"+cmdAlias+".dump_ssh_out.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)

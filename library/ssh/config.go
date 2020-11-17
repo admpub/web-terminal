@@ -83,3 +83,34 @@ func KeyboardInteractivefunc(reader *bufio.Reader, writer io.Writer, account *Ac
 		return answers, nil
 	}
 }
+
+func NewHostConfig(cfg *ssh.ClientConfig, host string, port int) *HostConfig {
+	return &HostConfig{ClientConfig: cfg, Host: host, Port: port}
+}
+
+type HostConfig struct {
+	*ssh.ClientConfig
+	Host    string
+	Port    int
+	Account *AccountConfig
+}
+
+func (c *HostConfig) SetAccount(account *AccountConfig) *HostConfig {
+	c.Account = account
+	return c
+}
+
+type Config struct {
+	End   *HostConfig
+	Jumps []*HostConfig
+}
+
+func (c *Config) SetEnd(endHostConfig *HostConfig) *Config {
+	c.End = endHostConfig
+	return c
+}
+
+func (c *Config) AddJump(jumpHostConfig *HostConfig) *Config {
+	c.Jumps = append(c.Jumps, jumpHostConfig)
+	return c
+}

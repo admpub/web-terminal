@@ -1,6 +1,11 @@
 package ssh
 
-import "runtime"
+import (
+	"io"
+	"runtime"
+
+	"golang.org/x/crypto/ssh"
+)
 
 type AccountConfig struct {
 	User       string
@@ -19,4 +24,8 @@ func (a *AccountConfig) SetDefault() *AccountConfig {
 		}
 	}
 	return a
+}
+
+func (a *AccountConfig) BuildClientConfig(reader io.Reader, writer io.Writer) (*ssh.ClientConfig, error) {
+	return NewSSHConfig(reader, writer, a)
 }
