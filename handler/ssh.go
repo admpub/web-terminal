@@ -23,34 +23,35 @@ func NewSSHConfig(ws *websocket.Conn, account *sshx.AccountConfig) (*ssh.ClientC
 	return sshx.NewSSHConfig(bufio.NewReader(ws), ws, account)
 }
 
-func SSHShell(ws *websocket.Conn) {
-	var dumpOut, dumpIn io.WriteCloser
-	defer func() {
-		ws.Close()
-		if nil != dumpOut {
-			dumpOut.Close()
-		}
-		if nil != dumpIn {
-			dumpIn.Close()
-		}
-	}()
-	ctx := NewContext(ws)
-	hostname := ParamGet(ctx, "hostname")
-	port := ParamGet(ctx, "port")
-	if 0 == len(port) {
-		port = "22"
+func NewHostConfig(ws *websocket.Conn, account *sshx.AccountConfig, host string, port int) (*sshx.HostConfig, error) {
+	clientConfig, err := NewSSHConfig(ws, account)
+	if err != nil {
+		return nil, err
+	}
+	return &sshx.HostConfig{
+		ClientConfig: clientConfig,
+		Host:         host,
+		Port:         port,
+	}, err
+}
+
+var (
+	SSHAccountContextKey         = struct{}{}
+	SSHConfigContextKey          = struct{}{}
+	SSHEndHostConfigContextKey   = struct{}{}
+	SSHJumpHostConfigsContextKey = struct{}{}
+)
+
+func getSSHAccount(ctx *Context) *sshx.AccountConfig {
+	account, ok := ctx.Request().Context().Value(SSHAccountContextKey).(*sshx.AccountConfig)
+	if ok {
+		return account
 	}
 	user := ParamGet(ctx, "user")
 	pwd := ParamGet(ctx, "password")
-	columns := toInt(ParamGet(ctx, "columns"), 120)
-	rows := toInt(ParamGet(ctx, "rows"), 80)
-	debug := config.Default.Debug
-	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
-		debug = true
-	}
 	charset := ParamGet(ctx, "charset")
 	// Dial code is taken from the ssh package example
-	account := &sshx.AccountConfig{
+	account = &sshx.AccountConfig{
 		User:     user,
 		Password: pwd,
 		Charset:  charset,
@@ -61,21 +62,58 @@ func SSHShell(ws *websocket.Conn) {
 	if passphrase := ParamGet(ctx, "passphrase"); len(passphrase) > 0 {
 		account.Passphrase = []byte(passphrase)
 	}
-	sshConfig, err := NewSSHConfig(ws, account)
-	if err != nil {
-		logString(ws, "Failed to dial: "+err.Error())
-		return
+	return account
+}
+
+func getHostConfig(ctx *Context) (*sshx.HostConfig, error) {
+	hostConfig, ok := ctx.Request().Context().Value(SSHAccountContextKey).(*sshx.HostConfig)
+	if ok {
+		return hostConfig, nil
 	}
-	sshClient := sshx.New(sshConfig)
+	hostname := ParamGet(ctx, "hostname")
+	port := ParamGet(ctx, "port")
+	if 0 == len(port) {
+		port = "22"
+	}
 	portN, err := strconv.Atoi(port)
 	if err != nil {
-		logString(ws, err.Error())
-		return
+		return nil, err
 	}
-	err = sshClient.Connect(hostname, portN)
+	account := getSSHAccount(ctx)
+	hostConfig, err = NewHostConfig(ctx.Conn, account, hostname, portN)
 	if err != nil {
-		logString(ws, err.Error())
-		return
+		return hostConfig, err
+	}
+	hostConfig.SetAccount(account)
+	return hostConfig, err
+}
+
+func SSHShell(ctx *Context) error {
+	var dumpOut, dumpIn io.WriteCloser
+	defer func() {
+		ctx.Close()
+		if nil != dumpOut {
+			dumpOut.Close()
+		}
+		if nil != dumpIn {
+			dumpIn.Close()
+		}
+	}()
+	columns := toInt(ParamGet(ctx, "columns"), 120)
+	rows := toInt(ParamGet(ctx, "rows"), 80)
+	debug := config.Default.Debug
+	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
+		debug = true
+	}
+	hostConfig, err := getHostConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to dial:: %w", err)
+	}
+	ctx.Config.SetEnd(hostConfig)
+	sshClient := sshx.New(ctx.Config)
+	err = sshClient.Connect()
+	if err != nil {
+		return err
 	}
 	session := sshClient.Session
 	defer sshClient.Close()
@@ -88,18 +126,17 @@ func SSHShell(ws *websocket.Conn) {
 	}
 	// Request pseudo terminal
 	if err = session.RequestPty("xterm", rows, columns, modes); err != nil {
-		logString(ws, "request for pseudo terminal failed:"+err.Error())
-		return
+		return fmt.Errorf("request for pseudo terminal failed: %w", err)
 	}
-
-	combinedOut := decodeBy(account.Charset, ws)
+	ws := ctx.Conn
+	combinedOut := decodeBy(hostConfig.Account.Charset, ws)
 	if debug {
-		dumpOut, err = os.OpenFile(config.Default.LogDir+hostname+".dump_ssh_out.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+		dumpOut, err = os.OpenFile(config.Default.LogDir+hostConfig.Host+".dump_ssh_out.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 		if nil == err {
-			combinedOut = io.MultiWriter(dumpOut, decodeBy(account.Charset, ws))
+			combinedOut = io.MultiWriter(dumpOut, decodeBy(hostConfig.Account.Charset, ws))
 		}
 
-		dumpIn, err = os.OpenFile(config.Default.LogDir+hostname+".dump_ssh_in.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+		dumpIn, err = os.OpenFile(config.Default.LogDir+hostConfig.Host+".dump_ssh_in.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 		if nil != err {
 			dumpIn = nil
 		}
@@ -109,18 +146,18 @@ func SSHShell(ws *websocket.Conn) {
 	session.Stderr = combinedOut
 	session.Stdin = warp(ws, dumpIn)
 	if err := session.Shell(); nil != err {
-		logString(ws, "Unable to execute command:"+err.Error())
-		return
+		return fmt.Errorf("Unable to execute command: %w", err)
 	}
 	if err := session.Wait(); nil != err {
-		logString(ws, "Unable to execute command:"+err.Error())
+		return fmt.Errorf("Unable to execute command: %w", err)
 	}
+	return nil
 }
 
-func SSHExec(ws *websocket.Conn) {
+func SSHExec(ctx *Context) error {
 	var dumpOut, dumpIn io.WriteCloser
 	defer func() {
-		ws.Close()
+		ctx.Close()
 		if nil != dumpOut {
 			dumpOut.Close()
 		}
@@ -128,72 +165,45 @@ func SSHExec(ws *websocket.Conn) {
 			dumpIn.Close()
 		}
 	}()
-	ctx := NewContext(ws)
-	hostname := ParamGet(ctx, "hostname")
-	port := ParamGet(ctx, "port")
-	if len(port) == 0 {
-		port = "22"
-	}
-	user := ParamGet(ctx, "user")
-	pwd := ParamGet(ctx, "password")
 	debug := config.Default.Debug
 	if "true" == strings.ToLower(ParamGet(ctx, "debug")) {
 		debug = true
 	}
-	charset := ParamGet(ctx, "charset")
 	cmd := ParamGet(ctx, "cmd")
 	cmdAlias := ParamGet(ctx, "dump_file")
 	if 0 == len(cmdAlias) {
 		cmdAlias = strings.Replace(cmd, " ", "_", -1)
 	}
-
-	// Dial code is taken from the ssh package example
-	account := &sshx.AccountConfig{
-		User:     user,
-		Password: pwd,
-		Charset:  charset,
-	}
-	if privKey := ParamGet(ctx, "privateKey"); len(privKey) > 0 {
-		account.PrivateKey = []byte(privKey)
-	}
-	if passphrase := ParamGet(ctx, "passphrase"); len(passphrase) > 0 {
-		account.Passphrase = []byte(passphrase)
-	}
-	sshConfig, err := NewSSHConfig(ws, account)
+	ws := ctx.Conn
+	hostConfig, err := getHostConfig(ctx)
 	if err != nil {
-		logString(ws, "Failed to dial: "+err.Error())
-		return
+		return fmt.Errorf("Failed to dial: %w", err)
 	}
-	sshClient := sshx.New(sshConfig)
-	portN, err := strconv.Atoi(port)
+	ctx.Config.SetEnd(hostConfig)
+	sshClient := sshx.New(ctx.Config)
+	err = sshClient.Connect()
 	if err != nil {
-		logString(ws, err.Error())
-		return
-	}
-	err = sshClient.Connect(hostname, portN)
-	if err != nil {
-		logString(ws, err.Error())
-		return
+		return err
 	}
 	session := sshClient.Session
 	defer sshClient.Close()
 
-	combinedOut := decodeBy(account.Charset, ws)
+	combinedOut := decodeBy(hostConfig.Account.Charset, ws)
 	if debug {
-		dumpOut, err = os.OpenFile(config.Default.LogDir+hostname+"_"+cmdAlias+".dump_ssh_out.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+		dumpOut, err = os.OpenFile(config.Default.LogDir+hostConfig.Host+"_"+cmdAlias+".dump_ssh_out.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 		if nil == err {
-			fmt.Println("log to file", config.Default.LogDir+hostname+"_"+cmdAlias+".dump_ssh_out.txt")
-			combinedOut = io.MultiWriter(dumpOut, decodeBy(account.Charset, ws))
+			fmt.Println("log to file", config.Default.LogDir+hostConfig.Host+"_"+cmdAlias+".dump_ssh_out.txt")
+			combinedOut = io.MultiWriter(dumpOut, decodeBy(hostConfig.Account.Charset, ws))
 		} else {
 			fmt.Println("failed to open log file,", err)
 		}
 
-		dumpIn, err = os.OpenFile(config.Default.LogDir+hostname+"_"+cmdAlias+".dump_ssh_in.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+		dumpIn, err = os.OpenFile(config.Default.LogDir+hostConfig.Host+"_"+cmdAlias+".dump_ssh_in.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 		if nil != err {
 			dumpIn = nil
 			fmt.Println("failed to open log file,", err)
 		} else {
-			fmt.Println("log to file", config.Default.LogDir+hostname+"_"+cmdAlias+".dump_ssh_in.txt")
+			fmt.Println("log to file", config.Default.LogDir+hostConfig.Host+"_"+cmdAlias+".dump_ssh_in.txt")
 		}
 	}
 
@@ -202,14 +212,13 @@ func SSHExec(ws *websocket.Conn) {
 	session.Stdin = warp(ws, dumpIn)
 
 	if err := session.Start(cmd); nil != err {
-		logString(combinedOut, "Unable to execute command:"+err.Error())
-		return
+		return fmt.Errorf("Unable to execute command: %w", err)
 	}
 	if err := session.Wait(); nil != err {
-		logString(combinedOut, "Unable to execute command:"+err.Error())
-		return
+		return fmt.Errorf("Unable to execute command: %w", err)
 	}
 	fmt.Println("exec ok")
+	return nil
 }
 
 func linuxSSH(ws *websocket.Conn, args []string, charset, wd string, timeout time.Duration) {

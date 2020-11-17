@@ -3,9 +3,11 @@ package handler
 import (
 	"io"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 
+	sshx "github.com/admpub/web-terminal/library/ssh"
 	"github.com/admpub/web-terminal/library/utils"
 
 	"github.com/admpub/web-terminal/config"
@@ -13,7 +15,27 @@ import (
 )
 
 var (
-	commands = map[string]string{}
+	commands     = map[string]string{}
+	findCommands = []string{
+		"snmpget",
+		"snmpgetnext",
+		"snmpdf",
+		"snmpbulkget",
+		"snmpbulkwalk",
+		"snmpdelta",
+		"snmpnetstat",
+		"snmpset",
+		"snmpstatus",
+		"snmptable",
+		"snmptest",
+		"snmptools",
+		"snmptranslate",
+		"snmptrap",
+		"snmpusm",
+		"snmpvacm",
+		"snmpwalk",
+		"wshell",
+	}
 
 	//ParamGet 获取参数值
 	ParamGet = func(ctx *Context, name string) string {
@@ -23,13 +45,15 @@ var (
 
 type Context struct {
 	*websocket.Conn
-	Data sync.Map
+	Data   sync.Map
+	Config *sshx.Config
 }
 
 func NewContext(ws *websocket.Conn) *Context {
 	return &Context{
-		Conn: ws,
-		Data: sync.Map{},
+		Conn:   ws,
+		Data:   sync.Map{},
+		Config: &sshx.Config{},
 	}
 }
 
@@ -57,11 +81,21 @@ func logString(ws io.Writer, msg string) {
 	utils.LogString(ws, msg)
 }
 
+func fixCharset(charset string) string {
+
+	if 0 == len(charset) {
+		if "windows" == runtime.GOOS {
+			charset = "GB18030"
+		} else {
+			charset = "UTF-8"
+		}
+	}
+
+	return charset
+}
+
 func fillCommands(executableFolder string) {
-	for _, nm := range []string{"snmpget", "snmpgetnext", "snmpdf", "snmpbulkget",
-		"snmpbulkwalk", "snmpdelta", "snmpnetstat", "snmpset", "snmpstatus",
-		"snmptable", "snmptest", "snmptools", "snmptranslate", "snmptrap", "snmpusm",
-		"snmpvacm", "snmpwalk", "wshell"} {
+	for _, nm := range findCommands {
 		if pa, ok := utils.LookPath(executableFolder, nm); ok {
 			commands[nm] = pa
 		} else if pa, ok := utils.LookPath(executableFolder, "netsnmp/"+nm); ok {
@@ -104,10 +138,27 @@ func Register(appRoot string, routeRegister func(string, http.Handler)) {
 	} else if !strings.HasSuffix(appRoot, `/`) {
 		appRoot += `/`
 	}
-	routeRegister(appRoot+"replay", websocket.Handler(Replay))
-	routeRegister(appRoot+"ssh", websocket.Handler(SSHShell))
-	routeRegister(appRoot+"telnet", websocket.Handler(TelnetShell))
-	routeRegister(appRoot+"cmd", websocket.Handler(ExecShell))
-	routeRegister(appRoot+"cmd2", websocket.Handler(ExecShell2))
-	routeRegister(appRoot+"ssh_exec", websocket.Handler(SSHExec))
+	routeRegister(appRoot+"replay", BuidHandler(Replay))
+	routeRegister(appRoot+"ssh", BuidHandler(SSHShell))
+	routeRegister(appRoot+"telnet", BuidHandler(TelnetShell))
+	routeRegister(appRoot+"cmd", BuidHandler(ExecShell))
+	routeRegister(appRoot+"cmd2", BuidHandler(ExecShell2))
+	routeRegister(appRoot+"ssh_exec", BuidHandler(SSHExec))
+}
+
+func BuidHandler(handler func(*Context) error, middlewares ...func(*Context) error) websocket.Handler {
+	return websocket.Handler(func(ws *websocket.Conn) {
+		ctx := NewContext(ws)
+		var err error
+		for _, f := range middlewares {
+			if err = f(ctx); err != nil {
+				logString(ctx, err.Error())
+				return
+			}
+		}
+		err = handler(ctx)
+		if err != nil {
+			logString(ctx, err.Error())
+		}
+	})
 }

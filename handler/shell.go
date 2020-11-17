@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,10 +18,9 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func ExecShell(ws *websocket.Conn) {
-	defer ws.Close()
-	ctx := NewContext(ws)
-	queryParams := ws.Request().URL.Query()
+func ExecShell(ctx *Context) error {
+	defer ctx.Close()
+	queryParams := ctx.Request().URL.Query()
 	wd := ParamGet(ctx, "wd")
 	charset := ParamGet(ctx, "charset")
 	pa := ParamGet(ctx, "exec")
@@ -38,12 +38,11 @@ func ExecShell(ws *websocket.Conn) {
 		}
 	}
 
-	execShell(ws, pa, args, charset, wd, stdin, timeout)
+	return execShell(ctx.Conn, pa, args, charset, wd, stdin, timeout)
 }
 
-func ExecShell2(ws *websocket.Conn) {
-	defer ws.Close()
-	ctx := NewContext(ws)
+func ExecShell2(ctx *Context) error {
+	defer ctx.Close()
 	wd := ParamGet(ctx, "wd")
 	charset := ParamGet(ctx, "charset")
 	pa := ParamGet(ctx, "exec")
@@ -52,25 +51,17 @@ func ExecShell2(ws *websocket.Conn) {
 
 	ss, e := shellwords.Split(pa)
 	if nil != e {
-		io.WriteString(ws, "命令格式不正确：")
-		io.WriteString(ws, e.Error())
-		return
+		return fmt.Errorf("命令格式不正确：%w", e)
 	}
 	pa = ss[0]
 	args := ss[1:]
 
-	execShell(ws, pa, args, charset, wd, stdin, timeout)
+	return execShell(ctx.Conn, pa, args, charset, wd, stdin, timeout)
 }
 
-func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin, timeoutStr string) {
+func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin, timeoutStr string) error {
 	//ctx := NewContext(ws)
-	if 0 == len(charset) {
-		if "windows" == runtime.GOOS {
-			charset = "GB18030"
-		} else {
-			charset = "UTF-8"
-		}
-	}
+	charset = fixCharset(charset)
 
 	timeout := 10 * time.Minute
 	if len(timeoutStr) > 0 {
@@ -84,9 +75,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 		fileContent := queryParams.Get("file")
 		f, e := ioutil.TempFile(os.TempDir(), "run")
 		if nil != e {
-			io.WriteString(ws, "生成临时文件失败：")
-			io.WriteString(ws, e.Error())
-			return
+			return fmt.Errorf("生成临时文件失败：%w", e)
 		}
 
 		filename := f.Name()
@@ -97,9 +86,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 
 		_, e = io.WriteString(f, fileContent)
 		if nil != e {
-			io.WriteString(ws, "写临时文件失败：")
-			io.WriteString(ws, e.Error())
-			return
+			return fmt.Errorf("写临时文件失败：%w", e)
 		}
 		f.Close()
 
@@ -108,7 +95,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 
 	if pa == "ssh" && runtime.GOOS != "windows" {
 		linuxSSH(ws, args, charset, wd, timeout)
-		return
+		return nil
 	}
 
 	if strings.HasPrefix(pa, "snmp") {
@@ -150,8 +137,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 	if err := cmd.Start(); err != nil {
 
 		if !os.IsPermission(err) || runtime.GOOS == "windows" {
-			io.WriteString(ws, err.Error())
-			return
+			return err
 		}
 
 		newArgs := append(make([]string, len(args)+1))
@@ -167,8 +153,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 
 		log.Println(cmd.Path, cmd.Args)
 		if err := cmd.Start(); err != nil {
-			io.WriteString(ws, err.Error())
-			return
+			return err
 		}
 	}
 
@@ -196,4 +181,5 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 	if isConnectionAbandoned {
 		utils.SaveSessionKey(pa, args, wd)
 	}
+	return nil
 }

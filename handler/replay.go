@@ -1,35 +1,24 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"os"
-	"runtime"
-
-	"golang.org/x/net/websocket"
 )
 
 // Replay .
-func Replay(ws *websocket.Conn) {
-	defer ws.Close()
-	ctx := NewContext(ws)
+func Replay(ctx *Context) error {
+	defer ctx.Close()
 	fileName := ParamGet(ctx, "file")
-	charset := ParamGet(ctx, "charset")
-	if 0 == len(charset) {
-		if "windows" == runtime.GOOS {
-			charset = "GB18030"
-		} else {
-			charset = "UTF-8"
-		}
-	}
+	charset := fixCharset(ParamGet(ctx, "charset"))
 	dumpOut, err := os.Open(fileName)
 	if nil != err {
-		logString(ws, "open '"+fileName+"' failed:"+err.Error())
-		return
+		return fmt.Errorf("open '"+fileName+"' failed: %w", err)
 	}
 	defer dumpOut.Close()
 
-	if _, err := io.Copy(decodeBy(charset, ws), dumpOut); err != nil {
-		logString(ws, "copy of stdout failed:"+err.Error())
-		return
+	if _, err := io.Copy(decodeBy(charset, ctx), dumpOut); err != nil {
+		return fmt.Errorf("copy of stdout failed: %w", err)
 	}
+	return nil
 }

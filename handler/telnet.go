@@ -1,43 +1,33 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/admpub/web-terminal/config"
 	"github.com/admpub/web-terminal/library/telnet"
-	"golang.org/x/net/websocket"
 )
 
-func TelnetShell(ws *websocket.Conn) {
-	defer ws.Close()
-	ctx := NewContext(ws)
+func TelnetShell(ctx *Context) error {
+	defer ctx.Close()
 	hostname := ParamGet(ctx, "hostname")
 	port := ParamGet(ctx, "port")
 	if 0 == len(port) {
 		port = "23"
 	}
-	charset := ParamGet(ctx, "charset")
-	if 0 == len(charset) {
-		if "windows" == runtime.GOOS {
-			charset = "GB18030"
-		} else {
-			charset = "UTF-8"
-		}
-	}
+	charset := fixCharset(ParamGet(ctx, "charset"))
 	//columns := toInt(ParamGet(ctx,"columns"), 80)
 	//rows := toInt(ParamGet(ctx,"rows"), 40)
 
 	var dumpOut io.WriteCloser
 	var dumpIn io.WriteCloser
-
+	ws := ctx.Conn
 	client, err := net.Dial("tcp", hostname+":"+port)
 	if nil != err {
-		logString(ws, "Failed to dial: "+err.Error())
-		return
+		return fmt.Errorf("Failed to dial: %w", err)
 	}
 	defer func() {
 		client.Close()
@@ -68,8 +58,7 @@ func TelnetShell(ws *websocket.Conn) {
 
 	conn, e := telnet.NewConnWithRead(client, warp(client, dumpIn))
 	if nil != e {
-		logString(nil, "failed to create connection: "+e.Error())
-		return
+		return fmt.Errorf("Failed to create connection: %w", err)
 	}
 	columns := toInt(ParamGet(ctx, "columns"), 80)
 	rows := toInt(ParamGet(ctx, "rows"), 40)
@@ -83,7 +72,7 @@ func TelnetShell(ws *websocket.Conn) {
 	}()
 
 	if _, err := io.Copy(decodeBy(charset, ws), conn); err != nil {
-		logString(ws, "copy of stdout failed:"+err.Error())
-		return
+		return fmt.Errorf("copy of stdout failed: %w", err)
 	}
+	return err
 }
