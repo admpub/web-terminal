@@ -4,13 +4,26 @@ import "sync"
 
 func NewTransformConfig() *TransformConfig {
 	return &TransformConfig{
-		ZModemConfig: &ZModemConfig{},
+		zmodemConfig: &ZModemConfig{},
 	}
 }
 
 type TransformConfig struct {
-	BufferSize int
-	*ZModemConfig
+	BufferSize   int
+	zmodemConfig *ZModemConfig
+}
+
+func (t *TransformConfig) ZModemConfig() *ZModemConfig {
+	return t.zmodemConfig
+}
+
+func (t *TransformConfig) SetDefaults() {
+	if t.BufferSize < 1 {
+		t.BufferSize = 8192
+	}
+	if t.zmodemConfig == nil {
+		t.zmodemConfig = &ZModemConfig{}
+	}
 }
 
 type ZModemConfig struct {

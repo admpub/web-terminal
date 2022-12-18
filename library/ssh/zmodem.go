@@ -74,6 +74,7 @@ func TransformChannel(session *ssh.Session, conn websocketx.Writer, cfg *config.
 		err = errors.New(`config.TransformConfig can't be nil`)
 		return
 	}
+	cfg.SetDefaults()
 	stdout, err = session.StdoutPipe()
 	if err != nil {
 		err = errors.Wrap(err, "get stdout channel error")
@@ -109,7 +110,8 @@ func TransformChannel(session *ssh.Session, conn websocketx.Writer, cfg *config.
 	return
 }
 
-func operateZModemBytes(n int, buff []byte, w io.WriteCloser, t MessageType, conn websocketx.Writer, cfg *config.TransformConfig) {
+func operateZModemBytes(n int, buff []byte, w io.WriteCloser, t MessageType, conn websocketx.Writer, tcfg *config.TransformConfig) {
+	cfg := tcfg.ZModemConfig()
 	if cfg.GetZModemSZOO() {
 		cfg.SetZModemSZOO(false)
 		if n < 2 {
@@ -133,7 +135,7 @@ func operateZModemBytes(n int, buff []byte, w io.WriteCloser, t MessageType, con
 		return
 	}
 	if cfg.GetZModemSZ() {
-		if n == cfg.BufferSize {
+		if n == tcfg.BufferSize {
 			// 如果读取的长度为 buffsize，则认为是在传输数据，
 			// 这样可以提高 sz 下载速率，很低概率会误判 zmodem 取消操作
 			conn.WriteMessage(websocket.BinaryMessage, buff[:n])
