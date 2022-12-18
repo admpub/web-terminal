@@ -6,6 +6,7 @@ import (
 
 	"github.com/admpub/errors"
 	"github.com/admpub/web-terminal/config"
+	websocketx "github.com/admpub/web-terminal/library/websocket"
 	"github.com/admpub/websocket"
 	"golang.org/x/crypto/ssh"
 )
@@ -68,7 +69,11 @@ var (
 )
 
 // 发送 ssh 会话的 stdout 和 stdin 数据到 websocket 连接
-func TransformChannel(session *ssh.Session, conn *websocket.Conn, cfg *config.TransformConfig) (stdout io.Reader, stderr io.Reader, stdin io.WriteCloser, err error) {
+func TransformChannel(session *ssh.Session, conn websocketx.Writer, cfg *config.TransformConfig) (stdout io.Reader, stderr io.Reader, stdin io.WriteCloser, err error) {
+	if cfg == nil {
+		err = errors.New(`config.TransformConfig can't be nil`)
+		return
+	}
 	stdout, err = session.StdoutPipe()
 	if err != nil {
 		err = errors.Wrap(err, "get stdout channel error")
@@ -104,7 +109,7 @@ func TransformChannel(session *ssh.Session, conn *websocket.Conn, cfg *config.Tr
 	return
 }
 
-func operateZModemBytes(n int, buff []byte, w io.WriteCloser, t MessageType, conn *websocket.Conn, cfg *config.TransformConfig) {
+func operateZModemBytes(n int, buff []byte, w io.WriteCloser, t MessageType, conn websocketx.Writer, cfg *config.TransformConfig) {
 	if cfg.GetZModemSZOO() {
 		cfg.SetZModemSZOO(false)
 		if n < 2 {

@@ -137,12 +137,14 @@ func BuidHandler(handler func(*Context) error, middlewares ...func(*Context) err
 		for _, f := range middlewares {
 			if err = f(ctx); err != nil {
 				logString(ctx, err.Error())
+				ws.Write([]byte(err.Error()))
 				return
 			}
 		}
 		err = handler(ctx)
 		if err != nil {
 			logString(ctx, err.Error())
+			ws.Write([]byte(err.Error()))
 		}
 	})
 }

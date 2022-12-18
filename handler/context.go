@@ -23,11 +23,9 @@ type Context struct {
 
 func NewContext(ws *websocket.Conn) *Context {
 	return &Context{
-		Conn: ws,
-		Data: sync.Map{},
-		Config: &config.SSHConfig{
-			Transform: &config.TransformConfig{},
-		},
+		Conn:   ws,
+		Data:   sync.Map{},
+		Config: &config.SSHConfig{},
 	}
 }
 
@@ -61,7 +59,7 @@ func (ctx *Context) GetHostConfig() (*config.HostConfig, error) {
 	}
 	hostname := ParamGet(ctx, "hostname")
 	port := ParamGet(ctx, "port")
-	if 0 == len(port) {
+	if len(port) == 0 {
 		port = "22"
 	}
 	portN, err := strconv.Atoi(port)

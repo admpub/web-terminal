@@ -21,8 +21,8 @@ var DefaultUpgrader = websocket.Upgrader{
 
 func Connect(
 	w http.ResponseWriter, req *http.Request,
-	onInit func(ws *websocket.Conn) error,
-	onRecv func(ws *websocket.Conn, msgType int, data []byte) error,
+	onInit func(w Writer) error,
+	onRecv func(w Writer, msgType int, data []byte) error,
 	upgraders ...websocket.Upgrader,
 ) error {
 	upgrader := DefaultUpgrader

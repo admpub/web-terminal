@@ -33,9 +33,7 @@ func ExecShell(ctx *Context) error {
 		if !ok {
 			break
 		}
-		for _, argument := range arguments {
-			args = append(args, argument)
-		}
+		args = append(args, arguments...)
 	}
 
 	return execShell(ctx.Conn, pa, args, charset, wd, stdin, timeout)

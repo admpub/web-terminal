@@ -113,10 +113,12 @@ func (s *SSH) dialNextJump(jumpHostClient *ssh.Client, nextJumpAddress string) (
 	if connectionTimeout <= 0 {
 		connectionTimeout = defaultTimeout
 	}
+	t := time.NewTimer(connectionTimeout)
+	defer t.Stop()
 	select {
 	case jumpHostConnSel := <-connChan:
 		jumpHostConn = jumpHostConnSel
-	case <-time.After(connectionTimeout):
+	case <-t.C:
 		return nil, fmt.Errorf("ssh.Dial from jump host to next jump failed after timeout")
 	}
 
@@ -135,7 +137,7 @@ func (s *SSH) Close() error {
 
 func (s *SSH) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	err := websocketx.Connect(w, req,
-		func(conn *websocket.Conn) error {
+		func(conn websocketx.Writer) error {
 			return s.StartShell(conn, 80, 120)
 		},
 		s.HandleRecv,
@@ -146,7 +148,7 @@ func (s *SSH) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *SSH) StartShell(conn *websocket.Conn, rows, columns int) error {
+func (s *SSH) StartShell(conn websocketx.Writer, rows, columns int) error {
 	return s.StartShellWithCallback(func() error {
 		return s.WithZModem(conn)
 	}, rows, columns)
@@ -178,13 +180,16 @@ func (s *SSH) StartShellWithCallback(onInit func() error, rows, columns int) err
 	return err
 }
 
-func (s *SSH) WithZModem(conn *websocket.Conn) error {
+func (s *SSH) WithZModem(conn websocketx.Writer) error {
+	if s.Config.Transform == nil {
+		return errors.New(`config.Transform can't be nil`)
+	}
 	var err error
 	s.stdout, s.stderr, s.stdin, err = TransformChannel(s.Session, conn, s.Config.Transform)
 	return err
 }
 
-func (s *SSH) HandleRecv(conn *websocket.Conn, msgType int, data []byte) error {
+func (s *SSH) HandleRecv(conn websocketx.Writer, msgType int, data []byte) error {
 	// BinaryMessage 是 zmodem 数据流，则直接发送给 ssh 服务端, 可以提高 rz 上传速率
 	if msgType == websocket.BinaryMessage {
 		_, err := s.stdin.Write(data)

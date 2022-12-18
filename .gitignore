@@ -5,3 +5,4 @@ out/
 *.bat
 log.txt
 web-terminal
+tower-app-*
