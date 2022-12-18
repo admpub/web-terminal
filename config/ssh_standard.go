@@ -1,4 +1,4 @@
-package ssh
+package config
 
 import (
 	"bufio"
@@ -6,11 +6,26 @@ import (
 	"io"
 	"strings"
 
-	"github.com/admpub/web-terminal/library/utils"
 	"golang.org/x/crypto/ssh"
 )
 
-func NewSSHConfig(reader io.Reader, writer io.Writer, account *AccountConfig) (*ssh.ClientConfig, error) {
+func NewSSHStandardWithAccount(ws io.ReadWriter, account *AccountConfig) (*ssh.ClientConfig, error) {
+	return NewSSHStandard(ws, ws, account)
+}
+
+func NewHostConfigWithAccount(ws io.ReadWriter, account *AccountConfig, host string, port int) (*HostConfig, error) {
+	clientConfig, err := NewSSHStandardWithAccount(ws, account)
+	if err != nil {
+		return nil, err
+	}
+	return &HostConfig{
+		ClientConfig: clientConfig,
+		Host:         host,
+		Port:         port,
+	}, err
+}
+
+func NewSSHStandard(reader io.Reader, writer io.Writer, account *AccountConfig) (*ssh.ClientConfig, error) {
 	// Dial code is taken from the ssh package example
 	sshConfig := &ssh.ClientConfig{
 		Config:          ssh.Config{Ciphers: supportedCiphers},
@@ -62,7 +77,7 @@ func KeyboardInteractivefunc(reader *bufio.Reader, writer io.Writer, account *Ac
 			return nil, nil
 		}
 		for _, question := range questions {
-			io.WriteString(utils.DecodeBy(charset, writer), question)
+			io.WriteString(DecodeBy(charset, writer), question)
 
 			switch strings.ToLower(strings.TrimSpace(question)) {
 			case "password:", "password as":
@@ -82,35 +97,4 @@ func KeyboardInteractivefunc(reader *bufio.Reader, writer io.Writer, account *Ac
 		}
 		return answers, nil
 	}
-}
-
-func NewHostConfig(cfg *ssh.ClientConfig, host string, port int) *HostConfig {
-	return &HostConfig{ClientConfig: cfg, Host: host, Port: port}
-}
-
-type HostConfig struct {
-	*ssh.ClientConfig
-	Host    string
-	Port    int
-	Account *AccountConfig
-}
-
-func (c *HostConfig) SetAccount(account *AccountConfig) *HostConfig {
-	c.Account = account
-	return c
-}
-
-type Config struct {
-	End   *HostConfig
-	Jumps []*HostConfig
-}
-
-func (c *Config) SetEnd(endHostConfig *HostConfig) *Config {
-	c.End = endHostConfig
-	return c
-}
-
-func (c *Config) AddJump(jumpHostConfig *HostConfig) *Config {
-	c.Jumps = append(c.Jumps, jumpHostConfig)
-	return c
 }

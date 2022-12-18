@@ -5,9 +5,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-	"sync"
 
-	sshx "github.com/admpub/web-terminal/library/ssh"
 	"github.com/admpub/web-terminal/library/utils"
 
 	"github.com/admpub/web-terminal/config"
@@ -43,20 +41,6 @@ var (
 	}
 )
 
-type Context struct {
-	*websocket.Conn
-	Data   sync.Map
-	Config *sshx.Config
-}
-
-func NewContext(ws *websocket.Conn) *Context {
-	return &Context{
-		Conn:   ws,
-		Data:   sync.Map{},
-		Config: &sshx.Config{},
-	}
-}
-
 func init() {
 	fillCommands(config.ExecutableFolder)
 }
@@ -66,7 +50,7 @@ func warp(dst io.ReadCloser, dump io.Writer) io.ReadCloser {
 }
 
 func decodeBy(charset string, dst io.Writer) io.Writer {
-	return utils.DecodeBy(charset, dst)
+	return config.DecodeBy(charset, dst)
 }
 
 func matchBy(dst io.Writer, excepted string, cb func()) io.Writer {

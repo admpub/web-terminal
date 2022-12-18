@@ -1,4 +1,4 @@
-package ssh
+package config
 
 import (
 	"io"
@@ -16,8 +16,8 @@ type AccountConfig struct {
 }
 
 func (a *AccountConfig) SetDefault() *AccountConfig {
-	if 0 == len(a.Charset) {
-		if "windows" == runtime.GOOS {
+	if len(a.Charset) == 0 {
+		if runtime.GOOS == "windows" {
 			a.Charset = "GB18030"
 		} else {
 			a.Charset = "UTF-8"
@@ -27,5 +27,5 @@ func (a *AccountConfig) SetDefault() *AccountConfig {
 }
 
 func (a *AccountConfig) BuildClientConfig(reader io.Reader, writer io.Writer) (*ssh.ClientConfig, error) {
-	return NewSSHConfig(reader, writer, a)
+	return NewSSHStandard(reader, writer, a)
 }
