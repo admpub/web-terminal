@@ -47,7 +47,7 @@ func (c *SSHConfig) SetEnd(endHostConfig *HostConfig) *SSHConfig {
 	return c
 }
 
-func (c *SSHConfig) AddJump(jumpHostConfig *HostConfig) *SSHConfig {
-	c.Jumps = append(c.Jumps, jumpHostConfig)
+func (c *SSHConfig) AddJump(jumpHostConfigs ...*HostConfig) *SSHConfig {
+	c.Jumps = append(c.Jumps, jumpHostConfigs...)
 	return c
 }
