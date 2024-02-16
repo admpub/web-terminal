@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -73,13 +74,13 @@ func (s *SSH) buildClient() (*ssh.Client, error) {
 		}
 		jumpHostConn, err := s.dialNextJump(jumpHostClient, endHostAddress)
 		if err != nil {
-			return nil, fmt.Errorf("ssh.Dial from jump to jump host failed: %w", err)
+			return nil, fmt.Errorf("ssh.Dial from jump to jump host(%q) failed: %w", endHostAddress, err)
 		}
 
 		ncc, chans, reqs, err := ssh.NewClientConn(jumpHostConn, endHostAddress, s.Config.End.ClientConfig)
 		if err != nil {
 			jumpHostConn.Close()
-			return nil, fmt.Errorf("failed to create ssh client to end host: %w", err)
+			return nil, fmt.Errorf("failed to create ssh client to end host(%q): %w", endHostAddress, err)
 		}
 
 		return ssh.NewClient(ncc, chans, reqs), nil
@@ -87,7 +88,7 @@ func (s *SSH) buildClient() (*ssh.Client, error) {
 
 	endHostClient, err := ssh.Dial("tcp", endHostAddress, s.Config.End.ClientConfig)
 	if err != nil {
-		return nil, fmt.Errorf("ssh.Dial directly to end host failed: %w", err)
+		return nil, fmt.Errorf("ssh.Dial directly to end host(%q) failed: %w", endHostAddress, err)
 	}
 
 	return endHostClient, nil
@@ -131,6 +132,9 @@ func (s *SSH) Close() error {
 	}
 	if s.stdin != nil {
 		s.stdin.Close()
+	}
+	if s.Client != nil {
+		s.Client.Close()
 	}
 	return nil
 }
@@ -218,4 +222,33 @@ func (s *SSH) HandleRecv(conn websocketx.Writer, msgType int, data []byte) error
 		}
 	}
 	return err
+}
+
+func (s *SSH) RunCmd(cmd string) error {
+	session, err := s.Client.NewSession()
+	if err != nil {
+		return errors.New("Failed to create session: " + err.Error())
+	}
+	session.Stdout = s.Session.Stdout
+	session.Stderr = s.Session.Stderr
+	defer session.Close()
+	return session.Run(cmd)
+}
+
+func (s *SSH) RunCmds(r *bytes.Buffer) error {
+	for {
+		statment, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := s.RunCmd(statment); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

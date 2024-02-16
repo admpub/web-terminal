@@ -78,9 +78,10 @@ func KeyboardInteractivefunc(reader *bufio.Reader, writer io.Writer, account *Ac
 		}
 		for _, question := range questions {
 			io.WriteString(DecodeBy(charset, writer), question)
-
-			switch strings.ToLower(strings.TrimSpace(question)) {
-			case "password:", "password as":
+			question = strings.ToLower(strings.TrimSpace(question))
+			//panic(question)
+			switch {
+			case question == "password:", strings.HasPrefix(question, "password as "), strings.HasPrefix(question, "password for "):
 				passwordCount++
 				if passwordCount == 1 {
 					answers = append(answers, password)

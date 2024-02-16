@@ -106,7 +106,7 @@ func AutoMIBSDir() string {
 }
 
 func AutoResourceDir() string {
-	files := []string{"web-terminal",
+	files := []string{"web-terminal", "static",
 		filepath.Join("lib", "web-terminal"),
 		filepath.Join("..", "lib", "web-terminal"),
 		filepath.Join(ExecutableFolder, "static"),

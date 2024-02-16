@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -150,7 +149,7 @@ func linuxSSH(ws *websocket.Conn, args []string, charset, wd string, timeout tim
 	idFile := config.Default.IDFile
 
 	if len(config.Default.SHFile) > 0 {
-		bs, err := ioutil.ReadFile(config.Default.SHFile)
+		bs, err := os.ReadFile(config.Default.SHFile)
 		if err != nil {
 			io.WriteString(ws, "parse arguments error: command is missing")
 			return

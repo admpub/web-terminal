@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -71,7 +70,7 @@ func execShell(ws *websocket.Conn, pa string, args []string, charset, wd, stdin,
 	queryParams := ws.Request().URL.Query()
 	if _, ok := queryParams["file"]; ok {
 		fileContent := queryParams.Get("file")
-		f, e := ioutil.TempFile(os.TempDir(), "run")
+		f, e := os.CreateTemp(os.TempDir(), "run")
 		if nil != e {
 			return fmt.Errorf("生成临时文件失败：%w", e)
 		}

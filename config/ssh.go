@@ -20,10 +20,20 @@ func (c *HostConfig) SetAccount(account *AccountConfig) *HostConfig {
 	return c
 }
 
-func NewSSHConfig() *SSHConfig {
-	return &SSHConfig{
+// NewSSHConfig
+func NewSSHConfig(end ...*HostConfig) *SSHConfig {
+	c := &SSHConfig{
 		Transform: NewTransformConfig(),
 	}
+	l := len(end)
+	if l > 0 {
+		j := l - 1
+		if j > 0 {
+			c.Jumps = append(c.Jumps, end[0:j]...)
+		}
+		c.End = end[j]
+	}
+	return c
 }
 
 type SSHConfig struct {

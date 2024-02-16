@@ -161,12 +161,12 @@ function connect() {
         return
       }
     }
-
-    var target_url = "ws://" + document.location.host + urlPrefix + "/" + protocol + "?hostname=" + hostname + "&port=" + port + "&user=" + user + "&password=" + password + "&debug=" + is_debug
+    
+    var target_url = "ws://" + document.location.host + urlPrefix + "/" + protocol + "?hostname=" + hostname + "&port=" + port + "&user=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(password) + "&debug=" + is_debug
     if ("replay" == protocol) {
-        target_url = "ws://" + document.location.host + urlPrefix + "/" + protocol + "?file=" + file + "&user=" + user + "&password=" + password
+        target_url = "ws://" + document.location.host + urlPrefix + "/" + protocol + "?file=" + encodeURIComponent(file) + "&user=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(password)
     } else if ("ssh_exec" == protocol) {
-        target_url = "ws://" + document.location.host + urlPrefix + "/" + protocol + "?dump_file=" + file + "&hostname=" + hostname + "&port=" + port + "&user=" + user + "&password=" + password + "&cmd=" + cmd + "&debug=" + is_debug
+        target_url = "ws://" + document.location.host + urlPrefix + "/" + protocol + "?dump_file=" + encodeURIComponent(file) + "&hostname=" + hostname + "&port=" + port + "&user=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(password) + "&cmd=" + encodeURIComponent(cmd) + "&debug=" + is_debug
     }
 
     createTerminal(target_url);
