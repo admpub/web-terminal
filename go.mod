@@ -1,6 +1,6 @@
 module github.com/admpub/web-terminal
 
-go 1.19
+go 1.21
 
 require (
 	github.com/GeertJohan/go.rice v1.0.3
@@ -18,12 +18,12 @@ require (
 require (
 	github.com/admpub/color v1.8.1 // indirect
 	github.com/admpub/decimal v1.3.1 // indirect
-	github.com/admpub/events v1.3.5 // indirect
+	github.com/admpub/events v1.3.6 // indirect
 	github.com/admpub/fsnotify v1.7.0 // indirect
 	github.com/admpub/go-isatty v0.0.11 // indirect
 	github.com/admpub/go-reuseport v0.0.4 // indirect
 	github.com/admpub/humanize v0.0.0-20190501023926-5f826e92c8ca // indirect
-	github.com/admpub/realip v0.0.0-20210421084339-374cf5df122d // indirect
+	github.com/admpub/realip v0.1.1 // indirect
 	github.com/admpub/timeago v1.2.1 // indirect
 	github.com/daaku/go.zipexe v1.0.2 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
@@ -37,7 +37,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/webx-top/captcha v0.1.0 // indirect
 	github.com/webx-top/com v1.2.12 // indirect
-	github.com/webx-top/echo v2.42.35+incompatible // indirect
+	github.com/webx-top/echo v1.6.1 // indirect
 	github.com/webx-top/poolx v0.0.0-20210912044716-5cfa2d58e380 // indirect
 	github.com/webx-top/tagfast v0.0.1 // indirect
 	github.com/webx-top/validation v0.0.3 // indirect
