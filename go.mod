@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/GeertJohan/go.rice v1.0.3
 	github.com/admpub/errors v0.8.2
+	github.com/admpub/log v1.3.6
 	github.com/admpub/websocket v1.0.4
 	github.com/fd/go-shellwords v0.0.0-20130603174837-6a119423524d
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
@@ -18,11 +19,10 @@ require (
 	github.com/admpub/color v1.8.1 // indirect
 	github.com/admpub/decimal v1.3.1 // indirect
 	github.com/admpub/events v1.3.5 // indirect
-	github.com/admpub/fsnotify v1.5.0 // indirect
+	github.com/admpub/fsnotify v1.7.0 // indirect
 	github.com/admpub/go-isatty v0.0.11 // indirect
 	github.com/admpub/go-reuseport v0.0.4 // indirect
 	github.com/admpub/humanize v0.0.0-20190501023926-5f826e92c8ca // indirect
-	github.com/admpub/log v1.3.6 // indirect
 	github.com/admpub/realip v0.0.0-20210421084339-374cf5df122d // indirect
 	github.com/admpub/timeago v1.2.1 // indirect
 	github.com/daaku/go.zipexe v1.0.2 // indirect
@@ -35,7 +35,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/webx-top/captcha v0.1.0 // indirect
 	github.com/webx-top/com v1.2.12 // indirect
 	github.com/webx-top/echo v2.42.35+incompatible // indirect

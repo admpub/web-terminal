@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/admpub/log"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/encoding/korean"
@@ -69,13 +70,10 @@ func CharsetEncoding(charset string) encoding.Encoding {
 }
 
 func DecodeBy(charset string, dst io.Writer) io.Writer {
-	switch strings.ToUpper(charset) {
-	case "UTF-8", "UTF8":
-		return dst
-	}
 	cs := CharsetEncoding(charset)
 	if nil == cs {
-		panic("charset '" + charset + "' is not exists.")
+		log.Warnf("[web-terminal]charset %q is not exists.", charset)
+		return dst
 	}
 
 	return transform.NewWriter(dst, cs.NewDecoder())
